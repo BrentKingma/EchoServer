@@ -1,26 +1,42 @@
+#include <iostream>
+#include <thread>
 #include <queue>
 #include <mutex>
 #include <condition_variable>
-
 #pragma once
 
-template <class T>
-class SafeQueue
+class Logger
 {
 private:
-    std::queue<T> queue;
-    mutable std::mutex mutex;
+    bool runThread;
+    std::queue<std::string> queue;
+    std::mutex mutex;
     std::condition_variable condition;
+    std::thread logThread;
 public:
-    SafeQueue()
+    Logger()
     {
-        queue = std::queue<T>();
+        queue = std::queue<std::string>();
+        runThread = true;
+        logThread = std::thread([this]() {
+            while (runThread)
+            {
+                if (!isEmpty())
+                {
+                    std::cout << dequeue() << std::endl;
+                }
+            }
+            });
     }
 
-    ~SafeQueue(){}
+    ~Logger()
+    {
+        runThread = false;
+        logThread.join();
+    }
 
     // Add an element to the queue.
-    void enqueue(T item)
+    void enqueue(std::string item)
     {
         std::lock_guard<std::mutex> lock(mutex);
         queue.push(item);
@@ -29,7 +45,7 @@ public:
 
     // Get the "front"-element.
     // If the queue is empty, wait till a element is avaiable.
-    T dequeue(void)
+    std::string dequeue(void)
     {
         std::unique_lock<std::mutex> lock(mutex);
         if (queue.empty())
@@ -37,12 +53,8 @@ public:
             std::string msg = "";
             return msg;
         }
-        //while (queue.empty())
-        //{
-        //    // release lock as long as the wait and reaquire it afterwards.
-        //    condition.wait(lock);
-        //}
-        T val = queue.front();
+
+        std::string val = queue.front();
         queue.pop();
         return val;
     }

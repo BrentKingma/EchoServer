@@ -1,13 +1,14 @@
 #include "Core.h"
+#include "Logger.h"
 
-int Core::Setup(SafeQueue<std::string>* queueRef)
+int Core::Setup(Logger* logger)
 {
-	this->queueRef = queueRef;
+	this->logger = logger;
 	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != 0)
 	{
 		msg = "WSAStartup failed: " + std::to_string(iResult);
-		queueRef->enqueue(msg);
+		logger->enqueue(msg);
 		return 1;
 	}	
 
@@ -21,7 +22,7 @@ int Core::Setup(SafeQueue<std::string>* queueRef)
 	if (iResult != 0)
 	{
 		msg = "getaddrinfo failed: " + std::to_string(iResult);
-		queueRef->enqueue(msg);
+		//queueRef->enqueue(msg);
 		WSACleanup();
 		return 1;
 	}
@@ -32,7 +33,7 @@ int Core::Setup(SafeQueue<std::string>* queueRef)
 	if (listenSocket == INVALID_SOCKET)
 	{
 		msg = "Error at socket(): " + std::to_string(WSAGetLastError());
-		queueRef->enqueue(msg);
+		//queueRef->enqueue(msg);
 		freeaddrinfo(result);
 		WSACleanup();
 		return 1;
@@ -43,7 +44,7 @@ int Core::Setup(SafeQueue<std::string>* queueRef)
 	if (iResult == SOCKET_ERROR)
 	{
 		msg = "bind failed with error: " + std::to_string(WSAGetLastError());
-		queueRef->enqueue(msg);
+		//queueRef->enqueue(msg);
 		freeaddrinfo(result);
 		closesocket(listenSocket);
 		WSACleanup();
@@ -57,7 +58,7 @@ void Core::Run()
 	if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR)
 	{
 		msg = "Listen failed with error: " + std::to_string(WSAGetLastError());
-		queueRef->enqueue(msg);
+		//queueRef->enqueue(msg);
 		closesocket(listenSocket);
 		WSACleanup();
 	}
@@ -77,7 +78,7 @@ void Core::Run()
 			if (clientSocket == INVALID_SOCKET)
 			{
 				msg = "accept failed: " + std::to_string(WSAGetLastError());
-				queueRef->enqueue(msg);
+				//queueRef->enqueue(msg);
 				closesocket(listenSocket);
 				WSACleanup();
 			}
@@ -86,24 +87,24 @@ void Core::Run()
 			if (iResult > 0)
 			{
 				msg = "Bytes received: " + std::to_string(iResult);
-				queueRef->enqueue(msg);
+				logger->enqueue(msg);
 
 				// Echo the buffer back to the sender
 				iSendResult = send(clientSocket, recvbuf, iResult, 0);
 				if (iSendResult == SOCKET_ERROR)
 				{
 					msg = "Send failed: " + std::to_string(WSAGetLastError());
-					queueRef->enqueue(msg);
+					//queueRef->enqueue(msg);
 					closesocket(clientSocket);
 					WSACleanup();
 				}
 				msg = "Bytes sent: " + std::to_string(iSendResult);
-				queueRef->enqueue(msg);
+				//queueRef->enqueue(msg);
 				iResult = shutdown(clientSocket, SD_SEND);
 				if (iResult == SOCKET_ERROR)
 				{
 					msg = "Shutdown failed: " + std::to_string(WSAGetLastError());
-					queueRef->enqueue(msg);
+					//queueRef->enqueue(msg);
 					closesocket(clientSocket);
 					WSACleanup();
 				}
@@ -115,12 +116,12 @@ void Core::Run()
 			else if (iResult == 0)
 			{
 				msg = "Connection closing...";
-				queueRef->enqueue(msg);
+				//queueRef->enqueue(msg);
 			}
 			else
 			{
 				msg = "recv failed: " + std::to_string(WSAGetLastError());
-				queueRef->enqueue(msg);
+				//queueRef->enqueue(msg);
 				closesocket(clientSocket);
 				WSACleanup();
 			}

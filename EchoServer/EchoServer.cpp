@@ -1,4 +1,4 @@
-#include "SafeQueue.h"
+#include "Logger.h"
 #include "Core.h"
 #include <stdio.h>
 #include <iostream>
@@ -9,24 +9,13 @@ bool runServer = true;
 
 int main()
 {
-	SafeQueue<std::string>* queue = new SafeQueue<std::string>();
+	Logger* logger = new Logger();
 	Core core = Core();
 
-	core.Setup(queue);
+	core.Setup(logger);
 	core.Run();
 
 	std::string cmd;
-
-	/*std::thread printThread = std::thread([queue]() {
-		while (runServer)
-		{
-			if (!queue->isEmpty())
-			{
-				std::cout << queue->dequeue() << std::endl;
-			}
-		}
-		});*/
-
 	
 	while(runServer)
 	{

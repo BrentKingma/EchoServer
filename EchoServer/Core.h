@@ -2,7 +2,7 @@
 #include <WS2tcpip.h>
 #include <thread>
 #include <string>
-#include "SafeQueue.h"
+#include "Logger.h"
 
 #define DEFAULT_PORT "22556"
 #define DEFAULT_BUFLEN 144
@@ -11,8 +11,7 @@
 class Core
 {
 private:
-	SafeQueue<std::string>* queueRef;
-
+	Logger* logger;
 	WSADATA wsaData;
 	struct addrinfo* result = NULL, * ptr = NULL, hints;
 	int iResult;
@@ -26,7 +25,7 @@ public:
 	Core()
 	:runServer(true)
 	{};
-	int Setup(SafeQueue<std::string>* queueRef);
+	int Setup(Logger* logger);
 	void Run();
 	void Stop();
 };
