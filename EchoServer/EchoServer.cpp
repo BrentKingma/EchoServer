@@ -1,5 +1,5 @@
 #include "Logger.h"
-#include "Core.h"
+#include "ServerCore.h"
 #include <stdio.h>
 #include <iostream>
 #include <string>
@@ -10,7 +10,7 @@ bool runServer = true;
 int main()
 {
 	Logger* logger = new Logger();
-	Core core = Core();
+	ServerCore core = ServerCore();
 
 	core.Setup(logger);
 	core.Run();

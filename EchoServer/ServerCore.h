@@ -8,7 +8,7 @@
 #define DEFAULT_BUFLEN 144
 
 #pragma comment(lib, "Ws2_32.lib")
-class Core
+class ServerCore
 {
 private:
 	Logger* logger;
@@ -22,7 +22,7 @@ private:
 	std::thread serverThread;
 
 public:
-	Core()
+	ServerCore()
 	:runServer(true)
 	{};
 	int Setup(Logger* logger);

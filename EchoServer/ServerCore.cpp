@@ -1,9 +1,9 @@
-#include "Core.h"
+#include "ServerCore.h"
 #include "Logger.h"
 
-int Core::Setup(Logger* logger)
+int ServerCore::Setup(Logger* a_logger)
 {
-	this->logger = logger;
+	this->logger = a_logger;
 	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != 0)
 	{
@@ -53,7 +53,7 @@ int Core::Setup(Logger* logger)
 	freeaddrinfo(result);
 }
 
-void Core::Run()
+void ServerCore::Run()
 {
 	if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR)
 	{
@@ -129,7 +129,7 @@ void Core::Run()
 		});
 }
 
-void Core::Stop()
+void ServerCore::Stop()
 {
 	runServer = false;
 	// No longer need server socket

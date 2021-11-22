@@ -139,11 +139,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Core.cpp" />
+    <ClCompile Include="ServerCore.cpp" />
     <ClCompile Include="EchoServer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Core.h" />
+    <ClInclude Include="ServerCore.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="SafeQueue.h" />
   </ItemGroup>

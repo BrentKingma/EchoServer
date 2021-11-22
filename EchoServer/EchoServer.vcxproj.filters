@@ -18,12 +18,12 @@
     <ClCompile Include="EchoServer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Core.cpp">
+    <ClCompile Include="ServerCore.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Core.h">
+    <ClInclude Include="ServerCore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SafeQueue.h">
