@@ -16,16 +16,29 @@ private:
 	struct addrinfo* result = NULL, * ptr = NULL, hints;
 	int iResult;
 	SOCKET listenSocket;
-	bool runServer;
+	bool runListenThread;
 	std::string msg;
+	TIMEVAL timeoutLength;
+	char recvbuf[DEFAULT_BUFLEN];
+	int recvbuflen;
 
-	std::thread serverThread;
+	std::thread listenThread;
+	std::vector<std::thread*> allThreads;
 
 public:
-	ServerCore()
-	:runServer(true)
+	ServerCore() :
+		runListenThread(true),
+		hints(),
+		logger(nullptr),
+		iResult(0),
+		listenSocket(INVALID_SOCKET),
+		wsaData(),
+		allThreads(),
+		recvbuflen(DEFAULT_BUFLEN),
+		recvbuf(),
+		timeoutLength()
 	{};
-	int Setup(Logger* logger);
+	int Setup(Logger* logger, long timeoutSec);
 	void Run();
 	void Stop();
 };

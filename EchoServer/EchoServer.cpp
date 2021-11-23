@@ -5,6 +5,8 @@
 #include <string>
 #include <thread>
 
+#pragma once
+
 bool runServer = true;
 
 int main()
@@ -12,7 +14,7 @@ int main()
 	Logger* logger = new Logger();
 	ServerCore core = ServerCore();
 
-	core.Setup(logger);
+	if (core.Setup(logger, 5) != 0) return 1;
 	core.Run();
 
 	std::string cmd;
@@ -26,7 +28,6 @@ int main()
 			runServer = false;
 		}
 	}
-	//printThread.join();
-	//delete queue;
+	delete logger;
 	return 0;
 }

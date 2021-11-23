@@ -1,10 +1,16 @@
 #include "ServerCore.h"
 #include "Logger.h"
 
-int ServerCore::Setup(Logger* a_logger)
+int ServerCore::Setup(Logger* a_logger, long timeoutSec)
 {
 	this->logger = a_logger;
+
+	//Sets timeout variable
+	timeoutLength.tv_sec = timeoutSec;
+	timeoutLength.tv_usec = 0;
+
 	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+
 	if (iResult != 0)
 	{
 		msg = "WSAStartup failed: " + std::to_string(iResult);
@@ -22,7 +28,7 @@ int ServerCore::Setup(Logger* a_logger)
 	if (iResult != 0)
 	{
 		msg = "getaddrinfo failed: " + std::to_string(iResult);
-		//queueRef->enqueue(msg);
+		logger->enqueue(msg);
 		WSACleanup();
 		return 1;
 	}
@@ -33,7 +39,7 @@ int ServerCore::Setup(Logger* a_logger)
 	if (listenSocket == INVALID_SOCKET)
 	{
 		msg = "Error at socket(): " + std::to_string(WSAGetLastError());
-		//queueRef->enqueue(msg);
+		logger->enqueue(msg);
 		freeaddrinfo(result);
 		WSACleanup();
 		return 1;
@@ -44,7 +50,7 @@ int ServerCore::Setup(Logger* a_logger)
 	if (iResult == SOCKET_ERROR)
 	{
 		msg = "bind failed with error: " + std::to_string(WSAGetLastError());
-		//queueRef->enqueue(msg);
+		logger->enqueue(msg);
 		freeaddrinfo(result);
 		closesocket(listenSocket);
 		WSACleanup();
@@ -55,85 +61,116 @@ int ServerCore::Setup(Logger* a_logger)
 
 void ServerCore::Run()
 {
-	if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR)
-	{
-		msg = "Listen failed with error: " + std::to_string(WSAGetLastError());
-		//queueRef->enqueue(msg);
+	listenThread = std::thread([this]() {
+		std::string lclmsg;
+		if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR)
+		{
+			lclmsg = "Listen failed with error: " + std::to_string(WSAGetLastError());
+			logger->enqueue(msg);
+			closesocket(listenSocket);
+			WSACleanup();
+		}
+
+		//Creates and prepares set for select function
+		fd_set listenSet;
+		fd_set readSet;
+		fd_set exceptSet;	
+
+		while (runListenThread)
+		{
+			//Have to recall these functions for loop
+			//Dont know why
+			FD_ZERO(&listenSet);
+			FD_ZERO(&readSet);
+			FD_ZERO(&exceptSet);
+			FD_SET(listenSocket, &listenSet);
+			FD_SET(listenSocket, &readSet);
+
+			if (select(0, &readSet, &listenSet, &exceptSet, &timeoutLength) == SOCKET_ERROR)
+			{
+				lclmsg = "Listen Thread failed in select" + std::to_string(WSAGetLastError());
+				logger->enqueue(lclmsg);
+				break;
+			}
+			if (FD_ISSET(listenSocket, &readSet))
+			{
+				// Accept a client socket
+				SOCKET clientSocket = accept(listenSocket, NULL, NULL);
+				if (clientSocket == INVALID_SOCKET)
+				{
+					lclmsg = "accept failed: " + std::to_string(WSAGetLastError());
+					logger->enqueue(lclmsg);
+				}
+				else
+				{
+					lclmsg = "Client Connected";
+					logger->enqueue(lclmsg);
+
+					allThreads.push_back(new std::thread([this, clientSocket]() {
+						while (true)
+						{
+							std::string lclmsg;
+							int iResult = recv(clientSocket, recvbuf, recvbuflen, 0);
+							if (iResult > 0)
+							{
+								lclmsg = "Bytes received: " + std::to_string(iResult);
+								logger->enqueue(lclmsg);
+
+								// Echo the buffer back to the sender
+								int iSendResult = send(clientSocket, recvbuf, iResult, 0);
+								if (iSendResult == SOCKET_ERROR)
+								{
+									lclmsg = "Send failed: " + std::to_string(WSAGetLastError());
+									logger->enqueue(lclmsg);
+									break;
+								}
+								lclmsg = "Bytes sent: " + std::to_string(iSendResult);
+								logger->enqueue(lclmsg);
+								iResult = shutdown(clientSocket, SD_SEND);
+								if (iResult == SOCKET_ERROR)
+								{
+									lclmsg = "Shutdown failed: " + std::to_string(WSAGetLastError());
+									logger->enqueue(lclmsg);
+									break;
+								}
+								break;
+							}
+							else if (iResult == 0)
+							{
+								lclmsg = "Connection closing...";
+								logger->enqueue(lclmsg);
+								break;
+							}
+							else
+							{
+								lclmsg = "recv failed: " + std::to_string(WSAGetLastError());
+								logger->enqueue(lclmsg);
+								break;
+							}
+						}
+						closesocket(clientSocket);
+						}));
+				}
+			}
+			lclmsg = "Checking for connections";
+			logger->enqueue(lclmsg);
+		}	
 		closesocket(listenSocket);
 		WSACleanup();
-	}
-
-	serverThread = std::thread([this]() {
-		SOCKET clientSocket;
-
-		clientSocket = INVALID_SOCKET;
-		char recvbuf[DEFAULT_BUFLEN];
-		int iSendResult;
-		int recvbuflen = DEFAULT_BUFLEN;
-
-		while (runServer)
-		{
-			// Accept a client socket
-			clientSocket = accept(listenSocket, NULL, NULL);
-			if (clientSocket == INVALID_SOCKET)
-			{
-				msg = "accept failed: " + std::to_string(WSAGetLastError());
-				//queueRef->enqueue(msg);
-				closesocket(listenSocket);
-				WSACleanup();
-			}
-
-			iResult = recv(clientSocket, recvbuf, recvbuflen, 0);
-			if (iResult > 0)
-			{
-				msg = "Bytes received: " + std::to_string(iResult);
-				logger->enqueue(msg);
-
-				// Echo the buffer back to the sender
-				iSendResult = send(clientSocket, recvbuf, iResult, 0);
-				if (iSendResult == SOCKET_ERROR)
-				{
-					msg = "Send failed: " + std::to_string(WSAGetLastError());
-					//queueRef->enqueue(msg);
-					closesocket(clientSocket);
-					WSACleanup();
-				}
-				msg = "Bytes sent: " + std::to_string(iSendResult);
-				//queueRef->enqueue(msg);
-				iResult = shutdown(clientSocket, SD_SEND);
-				if (iResult == SOCKET_ERROR)
-				{
-					msg = "Shutdown failed: " + std::to_string(WSAGetLastError());
-					//queueRef->enqueue(msg);
-					closesocket(clientSocket);
-					WSACleanup();
-				}
-
-				// cleanup
-				closesocket(clientSocket);
-				//WSACleanup();
-			}
-			else if (iResult == 0)
-			{
-				msg = "Connection closing...";
-				//queueRef->enqueue(msg);
-			}
-			else
-			{
-				msg = "recv failed: " + std::to_string(WSAGetLastError());
-				//queueRef->enqueue(msg);
-				closesocket(clientSocket);
-				WSACleanup();
-			}
-		}
-		});
+	});
 }
 
 void ServerCore::Stop()
 {
-	runServer = false;
-	// No longer need server socket
+	runListenThread = false;
 	closesocket(listenSocket);
 	WSACleanup();
-	serverThread.join();
+	listenThread.join();
+	for (std::thread* th : allThreads)
+	{
+		th->join();
+		delete th;
+	}
+	allThreads.clear();
 }
+
